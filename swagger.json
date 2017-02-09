@@ -1,0 +1,205 @@
+{
+  "swagger" : "2.0",
+  "info" : {
+    "description" : "Mali broj ljudi - donori - dijele dnevna mjerenja svoje težine.\n\nIz dnevne težine jednog donora određujemo vrijednosti dviju dionica:\n\n- dionica X ima vrijednost koja odgovara težini donora na taj dan.\n- inverzna dionica ~X ima vrijednost (150 kg - X).\n\nPrimjetimo da:\n\n- kako X raste, ~X pada.\n- X + ~X = 150 kg\n\nSvaki igrač počinje igru sa 10,000 kg raspoloživog novca. Igrač koristi taj novac za trgovanje dionicama. Ukupna vrijednost igrača je zbroj rapoloživog novca i aktualne vrijednosti svih dionica koje posjeduje. Cilj igre je maksimizirati ukupnu vrijednost dobrim predviđanjem kretanja vrijednosti dionica. Na primjer, u prvom danu igrac kupi 125 dionica \"X\" za 80 kg. U drugom danu, dionica naraste na 82 kg. Ako igrac proda sve dionice \"X\", zaradio je 2 kg * 125 = 250 kg!\n\nIgra ne dopušta donoru da trguje vlastitim dionicama.\n",
+    "version" : "1.1.0",
+    "title" : "Fitmarket"
+  },
+  "tags" : [ {
+    "name" : "status",
+    "description" : "Operacije vezane uz status"
+  }, {
+    "name" : "trading",
+    "description" : "Operacije za trgovanje"
+  } ],
+  "schemes" : [ "https" ],
+  "paths" : {
+    "/plot_txt" : {
+      "get" : {
+        "tags" : [ "status" ],
+        "summary" : "Dohvaca CSV sa cijenama svih dionica u svim prijasnjim mjerenjima.",
+        "produces" : [ "text/csv" ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "token",
+          "description" : "Autorizacijski token",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "search results matching criteria",
+            "schema" : {
+              "type" : "file"
+            }
+          }
+        }
+      }
+    },
+    "/actual_state" : {
+      "get" : {
+        "tags" : [ "status" ],
+        "summary" : "Dohvaca JSON sa trenutnim cijenama svih dionica.",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "token",
+          "description" : "Autorizacijski token",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "search results matching criteria",
+            "schema" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/definitions/Stock"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mystate" : {
+      "get" : {
+        "tags" : [ "status" ],
+        "summary" : "Dohvaca JSON koji prikazuje korisnikovu ukupnu vrijednost, neinvestiranu vrijednost i vrijednosti investirane u dionice.",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "token",
+          "description" : "Autorizacijski token",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "search results matching criteria",
+            "schema" : {
+              "$ref" : "#/definitions/Status"
+            }
+          }
+        }
+      }
+    },
+    "/submit" : {
+      "post" : {
+        "tags" : [ "trading" ],
+        "summary" : "Poziv mijenja korisnikov portfolio. U tijelu poruke posaljite JSON sa opisom transakcije.",
+        "description" : "Parametri su:\n- action je \"buy\" ili \"sell\"\n- stream_name ime dionice koja se kupuje (ili prefix ~ za inverznu dionicu).\n- count koliko dionice se zeli kupiti.\n",
+        "consumes" : [ "application/x-www-form-urlencoded" ],
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "token",
+          "description" : "Autorizacijski token",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "in" : "formData",
+          "name" : "stream_name",
+          "required" : true,
+          "description" : "ime dionice kojom se trguje (ili prefix ~ za inverznu dionicu).",
+          "type" : "string"
+        }, {
+          "in" : "formData",
+          "name" : "action",
+          "required" : true,
+          "description" : "akcija - buy ili sell.",
+          "type" : "string",
+          "enum" : [ "buy", "sell" ]
+        }, {
+          "in" : "formData",
+          "name" : "count",
+          "required" : true,
+          "description" : "s koliko dionica se zeli trgovati.",
+          "type" : "number"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Akcija je napravljena"
+          },
+          "500" : {
+            "description" : "Akcija nije uspjela"
+          }
+        }
+      }
+    },
+    "/sell_all" : {
+      "post" : {
+        "tags" : [ "trading" ],
+        "summary" : "Ovaj poziv ce prodati sve dionice koje korisnik ima. Primjetite da se ovaj poziv moze implementirati koristenjem vise poziva metode \"submit\".",
+        "produces" : [ "application/json" ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "token",
+          "description" : "Autorizacijski token",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Akcija je napravljena"
+          }
+        }
+      }
+    }
+  },
+  "definitions" : {
+    "Stock" : {
+      "type" : "object",
+      "required" : [ "stream_name", "latest_weight" ],
+      "properties" : {
+        "stream_name" : {
+          "type" : "string",
+          "example" : "TEST"
+        },
+        "latest_weight" : {
+          "type" : "number",
+          "example" : 74.4
+        }
+      }
+    },
+    "StockWithCount" : {
+      "type" : "object",
+      "required" : [ "stream_name", "latest_weight", "count" ],
+      "properties" : {
+        "stream_name" : {
+          "type" : "string",
+          "example" : "~TEST"
+        },
+        "latest_weight" : {
+          "type" : "number",
+          "example" : 75.6
+        },
+        "count" : {
+          "type" : "number",
+          "example" : 61
+        }
+      }
+    },
+    "Status" : {
+      "type" : "object",
+      "required" : [ "total_money", "free_money", "shares" ],
+      "properties" : {
+        "total_money" : {
+          "type" : "number",
+          "example" : 1000
+        },
+        "free_money" : {
+          "type" : "number",
+          "example" : 5388.4
+        },
+        "shares" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/StockWithCount"
+          }
+        }
+      }
+    }
+  },
+  "host" : "fitmarket.xfer.hr",
+  "basePath" : "/api"
+}
